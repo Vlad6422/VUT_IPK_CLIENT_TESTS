@@ -3,6 +3,10 @@
 Author: **Tomáš Hobza** ([xhobza03](mailto:xhobza03@vutbr.cz)) @ FIT VUT 2024
 Co-Author IPK25: **Malashchuk Vladyslav** @ FIT VUT 2025
 
+# Warning
+
+I updated IPK24->IPK25 and passed all tests. But made it in 30 min, so it can have troubles.
+
 ## 📚 Info
 
 Testing server for testing the TCP/UDP messaging client for the IPK project 2025 written in Python. Feel free to use it and modify it however you want.
