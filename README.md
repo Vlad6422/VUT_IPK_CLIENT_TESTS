@@ -1,6 +1,7 @@
 # IPK-01 Testing Server
 
 Author: **Tomáš Hobza** ([xhobza03](mailto:xhobza03@vutbr.cz)) @ FIT VUT 2024
+
 Co-Author IPK25: **Malashchuk Vladyslav** @ FIT VUT 2025
 
 # Warning
