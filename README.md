@@ -1,10 +1,11 @@
 # IPK-01 Testing Server
 
 Author: **Tomáš Hobza** ([xhobza03](mailto:xhobza03@vutbr.cz)) @ FIT VUT 2024
+Co-Author IPK25: **Malashchuk Vladyslav** @ FIT VUT 2025
 
 ## 📚 Info
 
-Testing server for testing the TCP/UDP messaging client for the IPK project 01 of 2024 written in Python. Feel free to use it and modify it however you want.
+Testing server for testing the TCP/UDP messaging client for the IPK project 2025 written in Python. Feel free to use it and modify it however you want.
 
 > ⚠️ I am not an expert in communications nor Python so go on with caution. Any problems that you might find you can hit me up (email/discord) or create a PR.
 
