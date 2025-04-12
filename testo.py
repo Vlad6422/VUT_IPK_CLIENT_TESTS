@@ -79,7 +79,7 @@ class ExecutableTester:
         self.executable_path = executable_path
         self.process = None
         self.stdout_queue = queue.Queue()
-        self.stderr_queue = queue.Queue()
+        self.stdout_queue = queue.Queue()
         self.return_code = None
         self.server_socket = None
         self.connection_socket = None  # For TCP connections
@@ -140,7 +140,7 @@ class ExecutableTester:
         if self.process:
             self.teardown()
         self.stdout_queue = queue.Queue()
-        self.stderr_queue = queue.Queue()
+        self.stdout_queue = queue.Queue()
 
         if platform == "linux" or platform == "linux2":
 
@@ -153,7 +153,7 @@ class ExecutableTester:
             )
 
             self._start_thread(self.read_stdout, self.stdout_queue)
-            self._start_thread(self.read_stderr, self.stderr_queue)
+            self._start_thread(self.read_stdout, self.stdout_queue)
         elif platform == "darwin":
             master, slave = pty.openpty()  # Open a pseudo-terminal pair
 
@@ -170,7 +170,7 @@ class ExecutableTester:
             self.stdout_fd = master  # Use the master for reading output
 
             self._start_thread(self.buffer_stdout_fd, self.stdout_queue)
-            self._start_thread(self.read_stderr, self.stderr_queue)
+            self._start_thread(self.read_stdout, self.stdout_queue)
 
         self.return_code = None
 
@@ -203,10 +203,10 @@ class ExecutableTester:
                 print(colored("STDOUT:", "blue"), colored(line, "blue"), end="")
             queue.put(line)
 
-    def read_stderr(self, queue):
-        for line in iter(self.process.stderr.readline, ""):
+    def read_stdout(self, queue):
+        for line in iter(self.process.stdout.readline, ""):
             if debug:
-                print(colored("STDERR:", "magenta"), colored(line, "magenta"), end="")
+                print(colored("stdout:", "magenta"), colored(line, "magenta"), end="")
             queue.put(line)
 
     def execute(self, input_data):
@@ -223,11 +223,11 @@ class ExecutableTester:
         self.history += "stdout:".join(output)
         return "".join(output)
 
-    def get_stderr(self):
+    def get_stdout(self):
         output = []
-        while not self.stderr_queue.empty():
-            output.append(self.stderr_queue.get())
-        self.history += "stderr:".join(output)
+        while not self.stdout_queue.empty():
+            output.append(self.stdout_queue.get())
+        self.history += "stdout:".join(output)
         return "".join(output)
 
     def teardown(self):
@@ -258,8 +258,8 @@ class ExecutableTester:
         print(colored("stdout now", "magenta"))
         print(self.get_stdout())
 
-        print(colored("stderr", "magenta"))
-        print(self.get_stderr())
+        print(colored("stdout", "magenta"))
+        print(self.get_stdout())
 
         print(colored("History", "magenta"))
         print(self.history)
@@ -315,8 +315,8 @@ def udp_hello(tester):
     tester.execute("Hello")
 
     stdout = tester.get_stdout()
-    stderr = tester.get_stderr()
-    assert "ERR:" in stderr, "Output does not match expected output."
+    
+    assert "ERROR: " in stdout, "Output does not match expected output."
 
 
 @testcase
@@ -327,9 +327,9 @@ def udp_not_auth(tester):
     tester.execute("/join")
 
     # The ERR message should be printed out exactly like this
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR:" in line for line in stderr.split("\n")]
+        ["ERROR:" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
@@ -342,8 +342,8 @@ def udp_invalid_command(tester):
     tester.execute("/pepe")
 
     stdout = tester.get_stdout()
-    stderr = tester.get_stderr()
-    assert "ERR:" in stderr, "Output does not match expected output."
+    
+    assert "ERROR:" in stdout, "Output does not match expected output."
 
 
 @testcase
@@ -401,11 +401,11 @@ def udp_auth_nok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Failure: nene"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Failure: nene"
+    stdout = tester.get_stdout()
     assert any(
-        ["Failure: nene" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Failure: nene' output."
+        ["Action Failure: nene" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Failure: nene' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -416,7 +416,7 @@ def udp_auth_nok(tester):
 
 @testcase
 def udp_auth_nok_ok(tester):
-    """Test that the program handles a NOK reply to AUTH followed by a successful AUTH correctly."""
+    """Test that the program handles a NOK reply to AUTH followed by a Action successful AUTH correctly."""
     tester.start_server("udp", 4567)
     tester.setup(args=["-t", "udp", "-s", "localhost", "-p", "4567"])
 
@@ -435,11 +435,11 @@ def udp_auth_nok_ok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Failure: nene"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Failure: nene"
+    stdout = tester.get_stdout()
     assert any(
-        ["Failure: nene" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Failure: nene' output."
+        ["Action Failure: nene" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Failure: nene' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -462,11 +462,11 @@ def udp_auth_nok_ok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: yes"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: yes"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: yes" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Success: yes' output."
+        ["Action Success: yes" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Success: yes' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -507,11 +507,11 @@ def udp_auth_port_change(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: jojo"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: jojo"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: jojo" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Success: jojo' output."
+        ["Action Success: jojo" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Success: jojo' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -522,7 +522,7 @@ def udp_auth_port_change(tester):
 
 # Helper function
 def auth_and_reply(tester):
-    """Helper function to test the AUTH command followed by a successful reply."""
+    """Helper function to test the AUTH command followed by a Action successful reply."""
     tester.start_server("udp", 4567)
     tester.setup(args=["-t", "udp", "-s", "localhost", "-p", "4567"])
 
@@ -541,11 +541,11 @@ def auth_and_reply(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: jojo"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: jojo"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: jojo" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Success: jojo' output."
+        ["Action Success: jojo" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Success: jojo' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -556,7 +556,7 @@ def auth_and_reply(tester):
 
 @testcase
 def udp_auth_ok(tester):
-    """Test that the program handles a successful reply to AUTH correctly."""
+    """Test that the program handles a Action successful reply to AUTH correctly."""
     auth_and_reply(tester)
 
 
@@ -608,8 +608,9 @@ def udp_bye1(tester):
 
     message = tester.receive_message()
     tMessage = translateMessage(message)
+
     assert (
-        tMessage == "BYE\r\n"
+        tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
 
 
@@ -624,7 +625,7 @@ def udp_bye2(tester):
     message = tester.receive_message()
     tMessage = translateMessage(message)
     assert (
-        tMessage == "BYE\r\n"
+        tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
 
 
@@ -650,9 +651,9 @@ def udp_server_err1(tester):
 
     sleep(0.2)
 
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR FROM server: chyba" in line for line in stderr.split("\n")]
+        ["ERROR FROM server: chyba" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
     # Should receive CONFIRM for the ERR message
@@ -664,8 +665,9 @@ def udp_server_err1(tester):
     # Should receive BYE for the ERR message
     message = tester.receive_message()
     tMessage = translateMessage(message)
+    print(tMessage)
     assert (
-        tMessage == "BYE\r\n"
+        tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
 
 
@@ -680,9 +682,9 @@ def udp_server_err2(tester):
     sleep(0.2)
 
     # The ERR message should be printed out exactly like this
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR FROM server: chyba" in line for line in stderr.split("\n")]
+        ["ERROR FROM server: chyba" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
     # Should receive CONFIRM for the ERROR message
@@ -695,7 +697,7 @@ def udp_server_err2(tester):
     message = tester.receive_message()
     tMessage = translateMessage(message)
     assert (
-        tMessage == "BYE\r\n"
+        tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
 
 
@@ -720,11 +722,11 @@ def udp_join_ok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: jojo"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: jojo"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: jojo" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Success: jojo' output."
+        ["Action Success: jojo" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Success: jojo' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -754,11 +756,11 @@ def udp_join_nok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Failure: nene"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Failure: nene"
+    stdout = tester.get_stdout()
     assert any(
-        ["Failure: nene" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Failure: nene' output."
+        ["Action Failure: nene" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Failure: nene' output."
 
     # Should receive CONFIRM for the REPLY message
     message = tester.receive_message()
@@ -777,10 +779,10 @@ def udp_multiple_auth(tester):
     sleep(0.2)
 
     # Client should not allow another auth and should output ERR
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR: " in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'ERR: ' output."
+        ["ERROR: " in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'ERROR: ' output."
 
 
 @testcase
@@ -793,14 +795,14 @@ def udp_invalid_msg(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "ERR: "
-    stderr = tester.get_stderr()
+    # Check the output, should contain "ERROR: "
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR: " in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'ERR: ' output."
+        ["ERROR: " in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'ERROR: ' output."
 
     # we should firs expect confirm (Packet loss can be detected using mandatory
-    # message confirmation with timeouts. Once a message is sent it is required to confirm its successful delivery by the other party.
+    # message confirmation with timeouts. Once a message is sent it is required to confirm its Action successful delivery by the other party.
     # The confirmation should be sent immediately after receiving the message, regardless of any potential higher-level processing issues)
     message = tester.receive_message()
     assert (
@@ -837,9 +839,9 @@ def udp_auth_err(tester):
     sleep(0.2)
 
     # The client should output the ERR message exactly like this
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR FROM server: ajaj" in line for line in stderr.split("\n")]
+        ["ERROR FROM server: ajaj" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
     # Check confirm of the ERR message
@@ -852,7 +854,7 @@ def udp_auth_err(tester):
     message = tester.receive_message()
     tMessage = translateMessage(message)
     assert (
-        tMessage == "BYE\r\n"
+        tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
 
 
@@ -869,8 +871,8 @@ def tcp_hello(tester):
     tester.execute("Hello")
 
     stdout = tester.get_stdout()
-    stderr = tester.get_stderr()
-    assert "ERR:" in stderr, "Output does not match expected output."
+    
+    assert "ERROR:" in stdout, "Output does not match expected output."
 
 
 @testcase
@@ -881,9 +883,9 @@ def tcp_not_auth(tester):
     tester.execute("/join")
 
     # The ERR message should be printed out exactly like this
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR:" in line for line in stderr.split("\n")]
+        ["ERROR:" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
@@ -897,8 +899,8 @@ def tcp_invalid_command(tester):
     tester.execute("/pepe")
 
     stdout = tester.get_stdout()
-    stderr = tester.get_stderr()
-    assert "ERR:" in stderr, "Output does not match expected output."
+    
+    assert "ERROR:" in stdout, "Output does not match expected output."
 
 
 @testcase
@@ -916,7 +918,7 @@ def tcp_auth(tester):
 
 @testcase
 def tcp_auth_ok(tester):
-    """Test that the program handles a successful reply to AUTH correctly."""
+    """Test that the program handles a Action successful reply to AUTH correctly."""
     tester.start_server("tcp", 4567)
     tester.setup(args=["-t", "tcp", "-s", "localhost", "-p", "4567"])
     tester.execute("/auth a b c")
@@ -932,10 +934,10 @@ def tcp_auth_ok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: vsechno cajk"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: vsechno cajk"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: vsechno cajk" == line for line in stderr.split("\n")]
+        ["Action Success: vsechno cajk" == line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
@@ -955,9 +957,9 @@ def tcp_auth_nok(tester):
 
     sleep(0.2)
 
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["Failure: nic cajk" == line for line in stderr.split("\n")]
+        ["Action Failure: nic cajk" == line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
@@ -979,7 +981,7 @@ def tcp_auth_port(tester):
 
 @testcase
 def tcp_auth_nok_ok(tester):
-    """Test that the program handles a NOK reply to AUTH followed by a successful AUTH correctly."""
+    """Test that the program handles a NOK reply to AUTH followed by a Action successful AUTH correctly."""
     tester.start_server("tcp", 4567)
     tester.setup(args=["-t", "tcp", "-s", "localhost", "-p", "4567"])
     tester.execute("/auth a b c")
@@ -993,9 +995,9 @@ def tcp_auth_nok_ok(tester):
 
     sleep(0.2)
 
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["Failure: nic cajk" == line for line in stderr.split("\n")]
+        ["Action Failure: nic cajk" == line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
     tester.execute("/auth d e f")
@@ -1009,15 +1011,15 @@ def tcp_auth_nok_ok(tester):
 
     sleep(0.2)
 
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: vsechno cajk" == line for line in stderr.split("\n")]
+        ["Action Success: vsechno cajk" == line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
 # Helper function
 def tcp_auth_and_reply(tester):
-    """Helper function to test the AUTH command followed by a successful reply."""
+    """Helper function to test the AUTH command followed by a Action successful reply."""
     tester.start_server("tcp", 4567)
     tester.setup(args=["-t", "tcp", "-s", "localhost", "-p", "4567"])
 
@@ -1035,16 +1037,16 @@ def tcp_auth_and_reply(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: vsechno cajk"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: vsechno cajk"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: vsechno cajk" == line for line in stderr.split("\n")]
+        ["Action Success: vsechno cajk" == line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
 @testcase
 def tcp_auth_ok(tester):
-    """Test that the program handles a successful reply to AUTH correctly."""
+    """Test that the program handles a Action successful reply to AUTH correctly."""
     tcp_auth_and_reply(tester)
 
 
@@ -1088,7 +1090,7 @@ def tcp_bye(tester):
     tester.process.stdin.close()
 
     message = tester.receive_message()
-    assert message == "BYE\r\n", "Incoming message does not match expected BYE message."
+    assert message == "BYE FROM c\r\n", "Incoming message does not match expected BYE message."
 
 
 @testcase
@@ -1105,9 +1107,9 @@ def tcp_server_err1(tester):
 
     sleep(0.4)
 
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR FROM jetovp: rdeli" in line for line in stderr.split("\n")]
+        ["ERROR FROM jetovp: rdeli" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
@@ -1117,13 +1119,14 @@ def tcp_server_err2(tester):
     tcp_auth_and_reply(tester)
 
     # Send a message from the server
+    
     tester.send_message("ERR FROM chuj IS bobr\r\n")
 
     sleep(0.4)
 
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR FROM chuj: bobr" in line for line in stderr.split("\n")]
+        ["ERROR FROM chuj: bobr" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
 
@@ -1147,11 +1150,11 @@ def tcp_join_ok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: jojo"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: jojo"
+    stdout = tester.get_stdout()
     assert any(
-        ["Success: takjo brasko ale bud hodnej" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Success: jojo' output."
+        ["Action Success: takjo brasko ale bud hodnej" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Success: jojo' output."
 
 
 @testcase
@@ -1174,11 +1177,11 @@ def tcp_join_nok(tester):
 
     sleep(0.2)
 
-    # Check the output, should contain "Success: jojo"
-    stderr = tester.get_stderr()
+    # Check the output, should contain "Action Success: jojo"
+    stdout = tester.get_stdout()
     assert any(
-        ["Failure: minus boiiii" in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'Success: jojo' output."
+        ["Action Failure: minus boiiii" in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'Action Success: jojo' output."
 
 
 @testcase
@@ -1191,43 +1194,51 @@ def tcp_multiple_auth(tester):
     sleep(0.2)
 
     # Client should not allow another auth and should output ERR
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR: " in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'ERR: ' output."
+        ["ERROR: " in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'ERROR: ' output."
 
 
 @testcase
 def tcp_invalid_msg(tester):
-    """Test that the program handles an invalid message correctly."""
+    """Test that the program handles an invalid message correctly and responds appropriately."""
+
     tcp_auth_and_reply(tester)
 
-    # Send invalid message
+    # Send an invalid message
     tester.send_message("TVOJE MAMINKA\r\n")
 
     sleep(0.2)
 
-    # Check the output, should contain "ERR: "
-    stderr = tester.get_stderr()
+    # Check stdout contains an appropriate error message
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR: " in line for line in stderr.split("\n")]
-    ), "Output does not match expected 'ERR: ' output."
+        "ERROR: " in line for line in stdout.split("\n")
+    ), "Output does not contain expected 'ERROR: ' message."
 
-    # Client should respond with ERR message
-    message = tester.receive_message()
-    assert re.match(
-        r"ERR FROM c IS [ -~]+\r\n", message
-    ), "Incoming message does not match expected ERR message."
+    # Collect responses (messages may be split or combined)
+    received = ""
+    for _ in range(2):  # Try to receive up to 2 packets
+        try:
+            part = tester.receive_message(timeout=0.5)
+            if part:
+                received += part
+        except TimeoutError:
+            break
 
-    # Send EOF to client stdin
+    print("Received:\n", repr(received))
+
+    # Use regex to validate both messages are present
+    err_match = re.search(r"ERR FROM c IS [ -~]+\r\n", received)
+    bye_match = re.search(r"BYE FROM c\r\n", received)
+
+    assert err_match, "Missing or malformed ERR message."
+    assert bye_match, "Missing BYE message."
+
+    # Close client's stdin
     tester.process.stdin.close()
-
     sleep(0.2)
-
-    # Client should respond with BYE message
-    message = tester.receive_message()
-    assert message == "BYE\r\n", "Incoming message does not match expected ERR message."
-
 
 @testcase
 def tcp_auth_err(tester):
@@ -1244,18 +1255,17 @@ def tcp_auth_err(tester):
 
     # Send ERR message
     tester.send_message("ERR FROM server IS ajaj\r\n")
-
     sleep(0.2)
 
     # The client should output the ERR message exactly like this
-    stderr = tester.get_stderr()
+    stdout = tester.get_stdout()
     assert any(
-        ["ERR FROM server: ajaj" in line for line in stderr.split("\n")]
+        ["ERROR FROM server: ajaj" in line for line in stdout.split("\n")]
     ), "Output does not match expected error message."
 
     # The client should respond with BYE message
     message = tester.receive_message()
-    assert message == "BYE\r\n", "Incoming message does not match expected BYE message."
+    assert message == "BYE FROM c\r\n", "Incoming message does not match expected BYE message."
 
 
 ### END TEST CASES ###
