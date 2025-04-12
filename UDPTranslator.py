@@ -77,4 +77,5 @@ def translateMessage(data):
         return f"ERR FROM {display_name} IS {message_contents}\r\n"
 
     elif message_type == 0xFF:  # BYE
-        return "BYE\r\n"
+        display_name, pointer = read_variable_length_string(data, pointer)
+        return f"BYE FROM {display_name}\r\n"
