@@ -665,7 +665,6 @@ def udp_server_err1(tester):
     # Should receive BYE for the ERR message
     message = tester.receive_message()
     tMessage = translateMessage(message)
-    print(tMessage)
     assert (
         tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
@@ -1227,7 +1226,6 @@ def tcp_invalid_msg(tester):
         except TimeoutError:
             break
 
-    print("Received:\n", repr(received))
 
     # Use regex to validate both messages are present
     err_match = re.search(r"ERR FROM c IS [ -~]+\r\n", received)
