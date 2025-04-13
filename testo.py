@@ -663,11 +663,12 @@ def udp_server_err1(tester):
     ), "Incoming message does not match expected CONFIRM message."
 
     # Should receive BYE for the ERR message
-    message = tester.receive_message()
-    tMessage = translateMessage(message)
-    assert (
-        tMessage == "BYE FROM c\r\n"
-    ), "Incoming message does not match expected BYE message."
+    # !!!Based on new FSM BYE is not mandatory anymore!!!
+    # message = tester.receive_message()
+    # tMessage = translateMessage(message)
+    # assert (
+    #     tMessage == "BYE FROM c\r\n"
+    # ), "Incoming message does not match expected BYE message."
 
 
 @testcase
@@ -693,11 +694,12 @@ def udp_server_err2(tester):
     ), "Incoming message does not match expected CONFIRM message."
 
     # Should receive BYE for the ERROR message
-    message = tester.receive_message()
-    tMessage = translateMessage(message)
-    assert (
-        tMessage == "BYE FROM c\r\n"
-    ), "Incoming message does not match expected BYE message."
+    # !!!Based on new FSM BYE is not mandatory anymore!!!
+    # message = tester.receive_message()
+    # tMessage = translateMessage(message)
+    # assert (
+    #     tMessage == "BYE FROM c\r\n"
+    # ), "Incoming message does not match expected BYE message."
 
 
 @testcase
@@ -809,6 +811,7 @@ def udp_invalid_msg(tester):
     ), "Incoming message does not match expected CONFIRM message."
 
     # Should receive ERR for the invalid message
+    # !!!Based on new FSM BYE is not mandatory anymore!!!
     message = tester.receive_message()
     tMessage = translateMessage(message)
     assert (
@@ -850,11 +853,12 @@ def udp_auth_err(tester):
     ), "Incoming message does not match expected CONFIRM message."
 
     # The client should respond with BYE message
-    message = tester.receive_message()
-    tMessage = translateMessage(message)
-    assert (
-        tMessage == "BYE FROM c\r\n"
-    ), "Incoming message does not match expected BYE message."
+    # !!!Based on new FSM BYE is not mandatory anymore!!!
+    # message = tester.receive_message()
+    # tMessage = translateMessage(message)
+    # assert (
+    #     tMessage == "BYE FROM c\r\n"
+    # ), "Incoming message does not match expected BYE message."
 
 
 # PART 3: TCP
@@ -1228,11 +1232,12 @@ def tcp_invalid_msg(tester):
 
 
     # Use regex to validate both messages are present
+    # !!!Based on new FSM BYE is not mandatory anymore!!!
     err_match = re.search(r"ERR FROM c IS [ -~]+\r\n", received)
-    bye_match = re.search(r"BYE FROM c\r\n", received)
+    # bye_match = re.search(r"BYE FROM c\r\n", received)
 
     assert err_match, "Missing or malformed ERR message."
-    assert bye_match, "Missing BYE message."
+    # assert bye_match, "Missing BYE message."
 
     # Close client's stdin
     tester.process.stdin.close()
@@ -1262,8 +1267,9 @@ def tcp_auth_err(tester):
     ), "Output does not match expected error message."
 
     # The client should respond with BYE message
-    message = tester.receive_message()
-    assert message == "BYE FROM c\r\n", "Incoming message does not match expected BYE message."
+    # !!!Based on new FSM BYE is not mandatory anymore!!!
+    # message = tester.receive_message()
+    # assert message == "BYE FROM c\r\n", "Incoming message does not match expected BYE message."
 
 
 ### END TEST CASES ###
