@@ -8,6 +8,8 @@ Co-Author IPK25: **Malashchuk Vladyslav** @ FIT VUT 2025
 
 I updated IPK24->IPK25 and passed all tests. But made it in 30 min, so it can have troubles.
 
+I have : ✅ 39/39 test cases passed
+
 ## 📚 Info
 
 Testing server for testing the TCP/UDP messaging client for the IPK project 2025 written in Python. Feel free to use it and modify it however you want.
@@ -22,6 +24,12 @@ The specific usage can be listed with the `-h` flag, but here's probably the mos
 - `-p <udp|tcp>` - choose the tested protocol (default is both)
 - `-d` - will show both `stdout` and `stdin` of the running client
 - `-t <testcase_name>` - run a specific test case only
+
+## Run example (For lazy)
+- `git clone https://github.com/Vlad6422/VUT_IPK_CLIENT_TESTS.git`
+- `cd VUT_IPK_CLIENT_TESTS/`
+- `pip3 install termcolor`
+- `python3 testo.py ./ipk25chat-client` <- `ipk25chat-client` is your binary file in same directory with testo.py, or path to binary.
 
 ## 🛠️ Prerequisites
 
