@@ -17,7 +17,7 @@ import pty
 import os
 
 from UDPTranslator import translateMessage, getMessageId
-from UDPMessages import confirm, reply, auth, join, msg, err, bye
+from UDPMessages import confirm, reply, auth, join, msg, err, bye, ping
 
 global debug
 global run_tcp
@@ -592,6 +592,20 @@ def udp_svr_msg(tester):
     ), "Output does not match expected output."
 
     # Should receive CONFIRM for the MSG message
+    message = tester.receive_message()
+    assert (
+        message == b"\x00\x00\x01"
+    ), "Incoming message does not match expected CONFIRM message."
+
+# New test for IPK25
+@testcase
+def udp_ping(tester):
+    """Test that the program handles PING correctly."""
+    auth_and_reply(tester)
+    
+    tester.send_message(ping(1))
+
+
     message = tester.receive_message()
     assert (
         message == b"\x00\x00\x01"
