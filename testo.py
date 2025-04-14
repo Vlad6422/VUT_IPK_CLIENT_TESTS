@@ -79,11 +79,12 @@ class ExecutableTester:
         self.executable_path = executable_path
         self.process = None
         self.stdout_queue = queue.Queue()
-        self.stdout_queue = queue.Queue()
+        self.stderr_queue = queue.Queue()
         self.return_code = None
         self.server_socket = None
         self.connection_socket = None  # For TCP connections
         self.client_address = None  # For UDP responses
+        self.send_confirm = True
         self.history = ""
         self.accept_thread = None  # Keep track of the thread accepting connections
 
@@ -131,7 +132,8 @@ class ExecutableTester:
                     message, self.client_address = self.server_socket.recvfrom(1024)
                     if message[0] != 0:
                         # we should confirm it directly
-                        self.confirm(message)
+                        if self.send_confirm:
+                            self.confirm(message)
                     return message
             except socket.timeout:
                 raise TimeoutError("Socket timed out.")
@@ -140,7 +142,7 @@ class ExecutableTester:
         if self.process:
             self.teardown()
         self.stdout_queue = queue.Queue()
-        self.stdout_queue = queue.Queue()
+        self.stderr_queue = queue.Queue()
 
         if platform == "linux" or platform == "linux2":
 
@@ -153,7 +155,7 @@ class ExecutableTester:
             )
 
             self._start_thread(self.read_stdout, self.stdout_queue)
-            self._start_thread(self.read_stdout, self.stdout_queue)
+            self._start_thread(self.read_stderr, self.stderr_queue)
         elif platform == "darwin":
             master, slave = pty.openpty()  # Open a pseudo-terminal pair
 
@@ -203,10 +205,10 @@ class ExecutableTester:
                 print(colored("STDOUT:", "blue"), colored(line, "blue"), end="")
             queue.put(line)
 
-    def read_stdout(self, queue):
-        for line in iter(self.process.stdout.readline, ""):
+    def read_stderr(self, queue):
+        for line in iter(self.process.stderr.readline, ""):
             if debug:
-                print(colored("stdout:", "magenta"), colored(line, "magenta"), end="")
+                print(colored("stderr:", "magenta"), colored(line, "magenta"), end="")
             queue.put(line)
 
     def execute(self, input_data):
@@ -223,11 +225,10 @@ class ExecutableTester:
         self.history += "stdout:".join(output)
         return "".join(output)
 
-    def get_stdout(self):
+    def get_stderr(self):
         output = []
-        while not self.stdout_queue.empty():
-            output.append(self.stdout_queue.get())
-        self.history += "stdout:".join(output)
+        while not self.stderr_queue.empty():
+            output.append(self.stderr_queue.get())
         return "".join(output)
 
     def teardown(self):
@@ -260,6 +261,9 @@ class ExecutableTester:
 
         print(colored("stdout", "magenta"))
         print(self.get_stdout())
+
+        print(colored("stderr", "magenta"))
+        print(self.get_stderr())
 
         print(colored("History", "magenta"))
         print(self.history)
@@ -305,6 +309,15 @@ def all_args(tester):
 
 # PART 2: UDP
 
+@testcase
+def udp_help_command(tester):
+    """Test that the /help command shows some output."""
+    auth_and_reply(tester)
+    tester.execute("/help")
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    # Check for any output after the command
+    assert len(stdout.strip()) > 0, "Expected some output for /help command."
 
 @testcase
 def udp_hello(tester):
@@ -412,6 +425,23 @@ def udp_auth_nok(tester):
     assert (
         message == b"\x00\x00\x00"
     ), "Incoming message does not match expected CONFIRM message."
+
+@testcase
+def udp_rename_multiple(tester):
+    """Test renaming multiple times and sending a message."""
+    auth_and_reply(tester) # Initial auth as 'c'
+    tester.execute("/rename user1")
+    sleep(0.2)
+    tester.execute("/rename user2")
+    sleep(0.2)
+    tester.execute("message after rename")
+
+    # Expect MSG with the latest display name 'user2'
+    message = tester.receive_message()
+    tMessage = translateMessage(message)
+    assert (
+        tMessage == "MSG FROM user2 IS message after rename\r\n"
+    ), "Message should be sent with the latest display name 'user2'."
 
 
 @testcase
@@ -642,6 +672,119 @@ def udp_bye2(tester):
         tMessage == "BYE FROM c\r\n"
     ), "Incoming message does not match expected BYE message."
 
+@testcase
+def udp_server_bye(tester):
+    """Test that the client terminates correctly upon receiving BYE from the server."""
+    auth_and_reply(tester)
+    tester.send_message(bye(1, "c"))
+    sleep(0.2)
+    # check if the process is no longer running
+    assert tester.process.poll() is not None, "Client process should terminate after receiving BYE."
+    # We should also receive a CONFIRM for the BYE message
+    message = tester.receive_message()
+    assert (
+        message == b"\x00\x00\x01"
+    ), "Incoming message does not match expected CONFIRM message for BYE."
+
+@testcase
+def udp_send_receive_multiple(tester):
+    """Test sending and receiving multiple messages."""
+    auth_and_reply(tester)
+    tester.execute("client msg 1")
+    message = tester.receive_message()
+    assert "MSG FROM c IS client msg 1\r\n" in translateMessage(message), "Expected client msg 1"
+
+    tester.send_message(msg(1, "server", "server msg 1"))
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "server: server msg 1" in stdout, "Expected server msg 1 in output"
+    message = tester.receive_message() # Confirm for server msg 1
+    assert message == b"\x00\x00\x01", "Expected confirm for server msg 1"
+
+    tester.execute("client msg 2")
+    message = tester.receive_message()
+    assert "MSG FROM c IS client msg 2\r\n" in translateMessage(message), "Expected client msg 2"
+
+    tester.send_message(msg(2, "server", "server msg 2"))
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "server: server msg 2" in stdout, "Expected server msg 2 in output"
+    message = tester.receive_message() # Confirm for server msg 2
+    assert message == b"\x00\x00\x02", "Expected confirm for server msg 2"
+
+@testcase
+def udp_retransmit_missing_confirm1(tester):
+    """Test that the client retransmits a message if CONFIRM is not received."""
+    # Authenticate first
+    auth_and_reply(tester)
+
+    tester.send_confirm = False
+    # Client sends a message
+    tester.execute("test retransmit message")
+
+    # Receive the message, but DO NOT confirm it
+    message1 = tester.receive_message(timeout=1) 
+    msg_id1 = getMessageId(message1)
+    assert "MSG FROM c IS test retransmit message\r\n" in translateMessage(message1), "Expected first message"
+
+    # Wait for potential retransmit
+    try:
+        message2 = tester.receive_message(timeout=3) 
+        msg_id2 = getMessageId(message2)
+        assert "MSG FROM c IS test retransmit message\r\n" in translateMessage(message2), "Expected retransmitted message"
+        assert msg_id1 == msg_id2, "Retransmitted message ID should be the same"
+        # Now confirm the retransmitted message
+        tester.confirm(message2)
+    except TimeoutError:
+        assert False, "Client did not retransmit the message within the timeout period."
+
+
+@testcase
+def udp_retransmit_missing_confirm2(tester):
+    """Test that the client retransmits a message if CONFIRM is not received."""
+    tester.start_server("udp", 4567)
+    tester.setup(args=["-t", "udp", "-s", "localhost", "-p", "4567"])
+    tester.execute("/auth a b c")
+
+    # Receive AUTH, but DO NOT confirm it
+    tester.send_confirm = False
+    message1 = tester.receive_message(timeout=1) 
+    msg_id1 = getMessageId(message1)
+    assert "AUTH IS a AS c USING b\r\n" in translateMessage(message1), "Expected AUTH message"
+
+    # Wait for potential retransmit
+    try:
+        message2 = tester.receive_message(timeout=3) 
+        msg_id2 = getMessageId(message2)
+        assert "AUTH IS a AS c USING b\r\n" in translateMessage(message2), "Expected retransmitted AUTH message"
+        assert msg_id1 == msg_id2, "Retransmitted message ID should be the same"
+        # Now confirm the retransmitted message
+        tester.confirm(message2)
+    except TimeoutError:
+        assert False, "Client did not retransmit the message within the timeout period."
+
+@testcase
+def udp_ignore_duplicate_server_msg(tester):
+    """Test that the client ignores duplicated messages from the server but confirms them."""
+    auth_and_reply(tester)
+
+    # Send the same message twice
+    server_message = msg(1, "server", "duplicate test")
+    tester.send_message(server_message)
+    sleep(0.2)
+    tester.send_message(server_message) # Send duplicate
+    sleep(0.2)
+
+    # Check output - should only contain the message once
+    stdout = tester.get_stdout()
+    occurrences = stdout.count("server: duplicate test")
+    assert occurrences == 1, f"Expected message to appear once in output, found {occurrences} times."
+
+    # Check confirmations - should receive two confirms for the same message ID
+    confirm1 = tester.receive_message()
+    assert confirm1 == b"\x00\x00\x01", "Expected confirm for first message"
+    confirm2 = tester.receive_message()
+    assert confirm2 == b"\x00\x00\x01", "Expected confirm for duplicate message"
 
 @testcase
 def udp_server_err1(tester):
@@ -877,6 +1020,113 @@ def udp_auth_err(tester):
 
 # PART 3: TCP
 
+@testcase
+def tcp_sigint(tester):
+    """Test that the program handles SIGINT correctly."""
+    tcp_auth_and_reply(tester)
+
+    # Send SIGINT signal
+    tester.send_signal(signal.SIGINT)
+
+    # Expect BYE message
+    message = tester.receive_message()
+    assert message == "BYE FROM c\r\n", "Incoming message does not match expected BYE message after SIGINT."
+
+@testcase
+def tcp_server_bye(tester):
+    """Test that the client terminates correctly upon receiving BYE from the server."""
+    tcp_auth_and_reply(tester)
+    tester.send_message("BYE FROM server\r\n") # Server sends BYE
+    sleep(0.2)
+    # Client should terminate
+    assert tester.process.poll() is not None, "Client process should terminate after receiving BYE."
+
+@testcase
+def tcp_rename(tester):
+    """Test renaming and sending a message with the new name."""
+    tcp_auth_and_reply(tester) # Initial auth as 'c'
+    tester.execute("/rename user1")
+    sleep(0.2) 
+    tester.execute("message after rename")
+
+    # Expect MSG with the new display name 'user1'
+    message = tester.receive_message()
+    assert (
+        message == "MSG FROM user1 IS message after rename\r\n"
+    ), "Message should be sent with the new display name 'user1'."
+
+@testcase
+def tcp_rename_multiple(tester):
+    """Test renaming multiple times and sending a message."""
+    tcp_auth_and_reply(tester) # Initial auth as 'c'
+    tester.execute("/rename user1")
+    sleep(0.2)
+    tester.execute("/rename user2")
+    sleep(0.2)
+    tester.execute("message after rename")
+
+    # Expect MSG with the latest display name 'user2'
+    message = tester.receive_message()
+    assert (
+        message == "MSG FROM user2 IS message after rename\r\n"
+    ), "Message should be sent with the latest display name 'user2'."
+
+@testcase
+def tcp_help_command(tester):
+    """Test that the /help command shows some output."""
+    tcp_auth_and_reply(tester)
+    tester.execute("/help")
+    sleep(1)
+    stdout = tester.get_stdout()
+    assert len(stdout.strip()) > 0, "Expected some output for /help command."
+
+@testcase
+def tcp_send_receive_multiple(tester):
+    """Test sending and receiving multiple messages."""
+    tcp_auth_and_reply(tester)
+    tester.execute("client msg 1")
+    message = tester.receive_message()
+    assert message == "MSG FROM c IS client msg 1\r\n", "Expected client msg 1"
+
+    tester.send_message("MSG FROM server IS server msg 1\r\n")
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "server: server msg 1" in stdout, "Expected server msg 1 in output"
+
+    tester.execute("client msg 2")
+    message = tester.receive_message()
+    assert message == "MSG FROM c IS client msg 2\r\n", "Expected client msg 2"
+
+    tester.send_message("MSG FROM server IS server msg 2\r\n")
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "server: server msg 2" in stdout, "Expected server msg 2 in output"
+
+@testcase
+def tcp_multiple_messages_single_segment(tester):
+    """Test receiving multiple messages concatenated in a single TCP segment."""
+    tcp_auth_and_reply(tester)
+
+    tester.send_message("MSG FROM server1 IS msg1\r\nMSG FROM server2 IS msg2\r\n")
+    sleep(1) 
+
+    stdout = tester.get_stdout()
+    assert "server1: msg1" in stdout, "Expected first message in output."
+    assert "server2: msg2" in stdout, "Expected second message in output."
+
+
+@testcase
+def tcp_single_message_multiple_segments(tester):
+    """Test receiving a single message split across multiple TCP segments."""
+    tcp_auth_and_reply(tester)
+
+    tester.send_message("MSG FROM server IS part1") 
+    sleep(0.2) # Short delay
+    tester.send_message("part2\r\n") # Send second part
+
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "server: part1part2" in stdout, "Expected reassembled message in output."
 
 @testcase
 def tcp_hello(tester):
