@@ -8,7 +8,7 @@ Co-Author IPK25: **Malashchuk Vladyslav** @ FIT VUT 2025
 
 I updated IPK24->IPK25 and passed all tests. But made it in 30 min, so it can have troubles.
 
-I have : ✅ 40/40 test cases passed
+I have : ✅ 55/55 test cases passed
 
 ## 📚 Info
 
