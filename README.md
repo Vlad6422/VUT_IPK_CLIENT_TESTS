@@ -10,6 +10,19 @@ I updated IPK24->IPK25 and passed all tests. But made it in 30 min, so it can ha
 
 I have : ✅ 55/55 test cases passed
 
+
+# If you want to include test results in your IPK documentation made by tests from this repository. I advise you to include clearly indicate that you are not the author and leave a link to this git repository.
+
+Example:
+
+ ...
+ 
+testy [4]
+
+...
+
+[4] MALASHCHUK Vladyslav, Tomáš HOBZA, et al. VUT_IPK_CLIENT_TESTS [online]. GitHub, 2025 [cit. 2025-04-16]. Available at: https://github.com/Vlad6422/VUT_IPK_CLIENT_TESTS
+
 ## 📚 Info
 
 Testing server for testing the TCP/UDP messaging client for the IPK project 2025 written in Python. Feel free to use it and modify it however you want.
