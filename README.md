@@ -8,7 +8,7 @@ Co-Author IPK25: **Malashchuk Vladyslav** @ FIT VUT 2025
 
 I updated IPK24->IPK25 and passed all tests. But made it in 30 min, so it can have troubles.
 
-I have : ✅ 55/55 test cases passed
+I have : ✅ 58/58 test cases passed
 
 
 # If you want to include test results in your IPK documentation made by tests from this repository. I advise you to include clearly indicate that you are not the author and leave a link to this git repository.
