@@ -10,6 +10,10 @@ I updated IPK24->IPK25 and passed all tests. But made it in 30 min, so it can ha
 
 I have : ✅ 58/58 test cases passed
 
+**Since it is your application, you should also be the author of test sets (i.e., avoid using someone else's tests).**
+
+If you add them to the documentation, do not try to pass them off as your own. Clearly indicate that you are not the author, add a quote, indicate that the tests are not the main ones and are considered only as part of self-checking and do not indicate the correct operation of the application. These tests cannot be part of your testing! You can indicate that you tried them for self-checking and do not consider them part of testing.
+
 Use these tests, but do not expect that even passing them will give you the maximum score during the assessment.
 
 These tests should not be considered in any case as the only ones, you can test at your own discretion using these tests. They do not cover all possible options! They do not check for exact compliance with the rules. The test mainly checks the basic things. You can only count on the fact that all tests will pass, your application meets the basic functionality, but this does not mean that when assessing the project you will receive the maximum score or all the tests will pass there.
