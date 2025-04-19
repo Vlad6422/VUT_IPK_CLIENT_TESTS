@@ -1590,6 +1590,41 @@ def tcp_auth_err(tester):
     # message = tester.receive_message()
     # assert message == "BYE FROM c\r\n", "Incoming message does not match expected BYE message."
 
+@testcase
+def tcp_grammar_is_case_insensitive(tester):
+    """Test verifies that TCP grammar is case-insensitive for REPLY, MSG, and ERR server packets."""
+    
+    # Start mock TCP server and initialize client
+    tester.start_server("tcp", 4567)
+    tester.setup(args=["-t", "tcp", "-s", "localhost", "-p", "4567"])
+    tester.execute("/auth a b c")
+
+    # Validate that AUTH command is sent correctly
+    message = tester.receive_message()
+    assert message == "AUTH a AS c USING b\r\n", "AUTH message mismatch."
+
+    # 1. Send a mixed-case REPLY message
+    tester.send_message("rEpLy oK is authenticated\r\n")
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert any("Action Success: authenticated" in line for line in stdout.split("\n")), \
+        "Client did not report successful reply."
+
+    # 2. Send a mixed-case MSG message
+    tester.send_message("mSg fRoM teSter Is message\r\n")
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert any("teSter: message" in line for line in stdout.split("\n")), \
+        "Client did not receive expected message."
+
+    # 3. Send a mixed-case ERR message
+    tester.send_message("eRR FrOm teSter iS message\r\n")
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert any("ERROR FROM teSter: message" in line for line in stdout.split("\n")), \
+        "Client did not report expected error message."
+
+    
 
 ### END TEST CASES ###
 
