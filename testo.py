@@ -1174,7 +1174,7 @@ def tcp_receive_two_messages_within_3_segments(tester):
 
     tester.send_message("MSG FROM teSter ") 
     sleep(0.2) # Short delay
-    tester.send_message("S message1\r\nMSG FROM teSte") 
+    tester.send_message("IS message1\r\nMSG FROM teSte") 
     sleep(0.2) # Short delay
     tester.send_message(" IS message2\r\n") 
     sleep(0.2)
