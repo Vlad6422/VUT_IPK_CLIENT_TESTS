@@ -787,6 +787,24 @@ def udp_ignore_duplicate_server_msg(tester):
     assert confirm2 == b"\x00\x00\x01", "Expected confirm for duplicate message"
 
 @testcase
+def udp_reports_error_when_missing_confirmation(tester):
+    """Test that the client retransmits a message if CONFIRM is not received and also Error when client dont recieve CONFIRM."""
+    auth_and_reply(tester)
+
+    # Receive AUTH, but DO NOT confirm it
+    tester.send_confirm = False
+    tester.execute("Hello!")
+    sleep(2)
+    stdout = tester.get_stdout()
+    print(stdout)
+    assert any(
+        ["ERROR: " in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'ERROR: ' output."
+    
+    
+    
+
+@testcase
 def udp_server_err1(tester):
     """Test that the program handles an ERR message from the server correctly while waiting for REPLY."""
     tester.start_server("udp", 4567)
@@ -1116,6 +1134,28 @@ def tcp_multiple_messages_single_segment(tester):
 
 
 @testcase
+def tcp_single_message_multiple_segments2(tester):
+    """Test receiving a single message split across multiple TCP segments."""
+    tcp_auth_and_reply(tester)
+
+    tester.send_message("M") 
+    sleep(0.2) # Short delay
+    tester.send_message("SG ") 
+    sleep(0.2) # Short delay
+    tester.send_message("FR") 
+    sleep(0.2) # Short delay
+    tester.send_message("OM ser") 
+    sleep(0.2) # Short delay
+    tester.send_message("ve") 
+    sleep(0.2) # Short delay
+    tester.send_message("r I") 
+    sleep(0.2) # Short delay
+    tester.send_message("S okeyBroChill\r\n") # Send second part
+
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "server: okeyBroChill" in stdout, "Expected reassembled message in output."
+    
 def tcp_single_message_multiple_segments(tester):
     """Test receiving a single message split across multiple TCP segments."""
     tcp_auth_and_reply(tester)
@@ -1127,7 +1167,22 @@ def tcp_single_message_multiple_segments(tester):
     sleep(0.2)
     stdout = tester.get_stdout()
     assert "server: part1part2" in stdout, "Expected reassembled message in output."
+    
+@testcase
+def tcp_receive_two_messages_within_3_segments(tester):
+    tcp_auth_and_reply(tester)
 
+    tester.send_message("MSG FROM teSter ") 
+    sleep(0.2) # Short delay
+    tester.send_message("S message1\r\nMSG FROM teSte") 
+    sleep(0.2) # Short delay
+    tester.send_message(" IS message2\r\n") 
+    sleep(0.2)
+    stdout = tester.get_stdout()
+    assert "teSter: message1\nteSte: message2" in stdout, "Expected reassembled message in output."
+    
+    
+    
 @testcase
 def tcp_hello(tester):
     """Test that the program does not accept any message commands before the user is authenticated."""
