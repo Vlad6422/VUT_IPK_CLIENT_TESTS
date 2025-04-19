@@ -14,7 +14,7 @@ Use these tests, but do not expect that even passing them will give you the maxi
 
 These tests should not be considered in any case as the only ones, you can test at your own discretion using these tests. They do not cover all possible options! They do not check for exact compliance with the rules. The test mainly checks the basic things. You can only count on the fact that all tests will pass, your application meets the basic functionality, but this does not mean that when assessing the project you will receive the maximum score or all the tests will pass there.
 
-These tests are openly available, they are not a reference for writing your own tests and writing your project. They can only be used as an additional validation / check of the project before delivery.
+These tests are openly available, they are not a reference for writing your own tests and writing your project. They can only be used as an additional validation / check of the project before submitting your project.
 
 All tests described here are fiction of the author and are not real. Any coincidence with reality is a myth.
 # If you want to include test results in your IPK documentation made by tests from this repository. I advise you to include clearly indicate that you are not the author and leave a link to this git repository.
