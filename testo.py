@@ -1031,6 +1031,70 @@ def udp_auth_err(tester):
     # ), "Incoming message does not match expected BYE message."
 
 
+
+@testcase
+def udp_reply_5_sec_error_auth(tester):
+    """Test that the program handles an ERR message from the server correctly."""
+    tester.start_server("udp", 4567)
+    tester.setup(args=["-t", "udp", "-s", "localhost", "-p", "4567"])
+
+    # Send AUTH command
+    tester.execute("/auth a b c")
+
+    # Expect the auth message to be received by the server
+    message = tester.receive_message()
+    tMessage = translateMessage(message)
+    assert (
+        tMessage == "AUTH IS a AS c USING b\r\n"
+    ), "Incoming message does not match expected AUTH message."
+    
+    sleep(5.1)
+        # The client should output the ERR message exactly like this
+    stdout = tester.get_stdout()
+    assert any(
+        ["ERROR: " in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'ERROR: ' output."
+    
+    message = tester.receive_message()
+    tMessage = translateMessage(message)
+    assert (
+        "ERR FROM c IS" in tMessage
+    ), "Incoming message does not match expected ERR message."
+    
+
+    
+    
+@testcase
+def udp_reply_5_sec_error_join(tester):
+    """Test that the program handles an ERR message from the server correctly."""
+    auth_and_reply(tester)
+    
+    tester.execute("/join abc")
+    # Expect the join message to be received by the server
+    message = tester.receive_message()
+    tMessage = translateMessage(message)
+    assert (
+        tMessage == "JOIN IS abc AS c\r\n"
+    ), "Incoming message does not match expected JOIN message."
+
+    sleep(5.1)
+    
+    
+    message = tester.receive_message()
+    tMessage = translateMessage(message)
+    assert (
+        "ERR FROM c IS" in tMessage
+    ), "Incoming message does not match expected ERR message."
+    
+    # The client should output the ERR message exactly like this
+    stdout = tester.get_stdout()
+    assert any(
+        ["ERROR: " in line for line in stdout.split("\n")]
+    ), "Output does not match expected 'ERROR: ' output."
+
+
+
+
 # PART 3: TCP
 
 @testcase
