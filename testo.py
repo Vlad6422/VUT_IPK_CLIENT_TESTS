@@ -6,7 +6,6 @@ import threading
 import queue
 import math
 from os import get_terminal_size
-from termcolor import colored, cprint
 from time import sleep
 from sys import platform
 import signal
@@ -44,20 +43,20 @@ def testcase(func):
         end_sep = "=" * (
             get_terminal_size().columns - (len(start_sep) + len(title)) - 1
         )
-        print(colored("\n" + start_sep + title + end_sep, "yellow"))
+        print("\n" + start_sep + title + end_sep)
         try:
             func(tester, *args, **kwargs)
-            print(colored(f"✅ Test '{func.__name__}': PASSED", "green"))
+            print(f"Test '{func.__name__}': PASSED")
             passed = True
         except AssertionError as e:
-            print(colored(f"❌ Test '{func.__name__}': FAILED - {e}", "red"))
+            print(f"Test '{func.__name__}': FAILED - {e}")
             tester.dump()
         except TimeoutError as e:
-            print(colored(f"❌ Test '{func.__name__}': FAILED - Timeout - {e}", "red"))
+            print(f" Test '{func.__name__}': FAILED - Timeout - {e}")
             tester.dump()
         except Exception as e:
-            print(colored(f"❌ Test '{func.__name__}': ERROR - {e}", "red"))
-        print(colored(f"Test '{func.__name__}' finished", "yellow"))
+            print(f" Test '{func.__name__}': ERROR - {e}")
+        print(f"Test '{func.__name__}' finished")
         tester.teardown()  # Clean up after test
 
         return passed
@@ -192,7 +191,7 @@ class ExecutableTester:
                 if line:
                     if debug:
                         print(
-                            colored("STDOUT:", "blue") + colored(line, "blue"), end=""
+                            "STDOUT:" + line
                         )
                     queue.put(line)
             except Exception as e:
@@ -202,13 +201,13 @@ class ExecutableTester:
     def read_stdout(self, queue):
         for line in iter(self.process.stdout.readline, ""):
             if debug:
-                print(colored("STDOUT:", "blue"), colored(line, "blue"), end="")
+                print("STDOUT:")
             queue.put(line)
 
     def read_stderr(self, queue):
         for line in iter(self.process.stderr.readline, ""):
             if debug:
-                print(colored("stderr:", "magenta"), colored(line, "magenta"), end="")
+                print("stderr:")
             queue.put(line)
 
     def execute(self, input_data):
@@ -256,16 +255,12 @@ class ExecutableTester:
 
     def dump(self):
 
-        print(colored("stdout now", "magenta"))
         print(self.get_stdout())
 
-        print(colored("stdout", "magenta"))
         print(self.get_stdout())
 
-        print(colored("stderr", "magenta"))
         print(self.get_stderr())
 
-        print(colored("History", "magenta"))
         print(self.history)
 
     def setClientAddress(self, client_address):
@@ -1677,7 +1672,7 @@ def run_tests(executable_path, udp=False, tcp=False, test_case=None):
             )
             return
 
-    cprint(
+    print(
         f"\n{'✅' if test_cases_passed == total_cases else '❌'} {test_cases_passed}/{total_cases} test cases passed",
         "green" if test_cases_passed == total_cases else "red",
     )
